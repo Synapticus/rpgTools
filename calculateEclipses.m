@@ -2,6 +2,12 @@
 % Predicts eclipses and syzygies (3+ body eclipses) between sets of planets 
 % Takes a while to plot because it draws every X individually.
 
+% (c) 2018 Sean Patrick 
+% per MIT License
+% Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+% The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+% THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 function [] = calculateEclipses ()
 close all
 Epoch = 2400; %How long are we looking for eclipses? In this case, 100 days
@@ -121,24 +127,9 @@ for p1 = 1:8
     
     for p2 = 1:8
         
-        %Don't waste time plotting within the same orbit. Needs work to
-        %auto-detect co-orbital planets; this is a kludge.
-        switch p1
-            case {1 2 3}
-                        switch p2
-                            case {1 2 3}
-                                continue
-                        end
-            case {4 5}
-                        switch p2
-                            case {4 5}
-                                continue
-                        end
-            case {6 7 8}
-                        switch p2
-                            case {6 7 8}
-                                continue
-                        end
+        %Don't waste time plotting within the same orbit. 
+        if (f(p1) == f(p2))
+            continue
         end
          
                 %Trim zeros
