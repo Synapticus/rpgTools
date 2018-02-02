@@ -8,34 +8,49 @@
 % The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
 % THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-function [] = calculateEclipses ()
+function [finalPhases] = calculateEclipses (varargin)
 close all
-Epoch = 2400; %How long are we looking for eclipses? In this case, 100 days
-% Units are whatever the orbit is in terms of. I.E. if orbital frequency is 1/10, an Epoch of 100 is 10 years.
+Epoch = 1000; %How long are we looking for eclipses? In this case, 100 days
+% Units are whatever the orbit is in terms of. I.E. if orbital frequency is 1/19, an Epoch of 100 is 190 years.
 
 % List of planets in order of distance from the sun separated by newlines
-planetString = 'Abraxas \n Sseras \n Eldrick \n  Nex \n Brachine \n Folon \n Meket \n Zona \n';
+planetString = 'Abraxas \n Sseras \n Eldrick \n  Nex \n Brachine \n Folon \n Meket \n Zona \n Fornas \n Ariat \n';
 
 % Orbital frequency in 1/(length of a year). Formatted on new lines per orbit ring.
-f = [1/1920 1/1920 1/1920 ...
-    1/5460 1/5460 ...
-    1/1123 1/1123 1/1123];
+ringFreqs = [1/19.2 1/54.6 1/11.2 1/15.0];
+
+f = [ringFreqs(1) ringFreqs(1) ringFreqs(1)...
+    ringFreqs(2) ringFreqs(2) ...
+    ringFreqs(3) ringFreqs(3) ringFreqs(3) ...
+    ringFreqs(4) ringFreqs(4)];
 
 % Initial phase in radians. Planets with initial phase 0 are in eclipse at t=0.
-th = [0 pi/2 3*pi/4 0 pi  pi/4 2*pi/3 0];
+
+if (~isempty(varargin))
+    th = varargin{1};
+else
+    th = [0 pi/2 3*pi/4 0 pi  pi/4 2*pi/3 0 0 5*pi/8];
+end
+
 
 % The "shadow" of each planet, that is, how wide is the area it eclipses
 % in terms of radian arc behind it? In order of distance from sun.
-shadow = [0.3 0.2 0.1 0.2 0.4 0.2 0.3 0.1];
+
+shadow = [0.3 0.2 0.1 0.2 0.4 0.2 0.3 0.1 0.1 0.1];
 
 % The number of planets
 Planets = length(f);
 
+finalPhases = th;
+for ind = 1:Planets
+    finalPhases(ind) = orbitAngle(Epoch,f(ind),th(ind));
+end
+    
 % Initializing...
 eclipseMatrix = zeros(length(f),length(f),100);
 eclipseCount = ones(length(f));
 s=2;
-syzygyMatrix = zeros(10,4);
+syzygyMatrix = zeros(10,5);
 lastSyzygy = [0 0 0];
 
 % Main orbital loop
@@ -64,32 +79,24 @@ for t = 1:Epoch %At all t over the Epoch
                 
                 %Detect syzygies
                 for p = 1:Planets %Check if a 3rd planet is in line
+                    for q = 1:Planets %Check if a 4th planet is in a line
                     
-                    if (j < p)
-                        pjShadow = shadow(j);
-                    else
-                        pjShadow = shadow(p);
-                    end
+                        [planetsInvolved, planetOrder] = sort([j,k,p,q]);
+                                  
                     
-                    if (k < p)
-                        pkShadow = shadow(k);
-                    else
-                        pkShadow = shadow(p);
-                    end
-                    
-                    if (abs(orbitAngle(t,f(j),th(j)) - orbitAngle(t,f(k),th(k))) < jkShadow && ...
-                        abs(orbitAngle(t,f(p),th(p)) - orbitAngle(t,f(k),th(k))) < pkShadow && ...
-                        abs(orbitAngle(t,f(j),th(j)) - orbitAngle(t,f(p),th(p))) < pjShadow && ...
-                        f(j) ~= f(k) && f(j) ~= f(p) && f(k) ~= f(p) && ...
-                        j ~= k && j ~= p && p ~= k && ...
-                        ~isempty(setdiff(unique([p,j,k]),lastSyzygy))) %This is to make sure the same event doesn't get recorded twice per t
+                        if (abs(orbitAngle(t,f(planetsInvolved(1)),th(planetsInvolved(1))) - orbitAngle(t,f(planetsInvolved(2)),th(planetsInvolved(2)))) < shadow(planetsInvolved(1)) && ...
+                            abs(orbitAngle(t,f(planetsInvolved(2)),th(planetsInvolved(2))) - orbitAngle(t,f(planetsInvolved(3)),th(planetsInvolved(3)))) < shadow(planetsInvolved(2)) && ...
+                            abs(orbitAngle(t,f(planetsInvolved(3)),th(planetsInvolved(3))) - orbitAngle(t,f(planetsInvolved(4)),th(planetsInvolved(4)))) < shadow(planetsInvolved(3)) && ...
+                            length(unique([f(planetsInvolved(1)),f(planetsInvolved(2)),f(planetsInvolved(3)),f(planetsInvolved(4))])) == 4 && ...
+                            ~isempty(setdiff(unique([j,k,p,q]),lastSyzygy))) %This is to make sure the same event doesn't get recorded twice per t
 
-                        syzygyMatrix(s,:) = [t, p, j, k];
-                        lastSyzygy = unique([p,j,k]); %Might need to do an actual search if more orbits are added?
-                        s = s+1;
-
-                    end
-                end
+                            syzygyMatrix(s,:) = [t, j,k,p,q];
+                            lastSyzygy = unique([j,k,p,q]); 
+                            s = s+1;
+                        end
+                    
+                    end %for q
+                end %for p
             
             end %end syzygy check
                        
@@ -98,8 +105,6 @@ for t = 1:Epoch %At all t over the Epoch
     
 
 end %end t loop
-
-
 
 eclipseCalendar = zeros(size(eclipseMatrix));
 
@@ -122,10 +127,10 @@ eclipseCalendar(:,:,all(~eclipseCalendar,3)) = [];
 gradient = 1/Planets:1/Planets:1;
 colors = [gradient;zeros(1,length(gradient));1-gradient];
 
-for p1 = 1:8
+for p1 = 1:Planets
     figure()
     
-    for p2 = 1:8
+    for p2 = 1:Planets
         
         %Don't waste time plotting within the same orbit. 
         if (f(p1) == f(p2))
@@ -162,10 +167,15 @@ for p1 = 1:8
         for ind = 1:length(syzygyMatrix(:,1))
             if ( (syzygyMatrix(ind,2) == p1) || ...
                  (syzygyMatrix(ind,3) == p1) || ...
-                 (syzygyMatrix(ind,4) == p1) )
+                 (syzygyMatrix(ind,4) == p1) || ...
+                 (syzygyMatrix(ind,5) == p1) )
                 
-                line([syzygyMatrix(ind,1), syzygyMatrix(ind,1)],[0 9],'Color',[0.5 0.5 0.5]);   
+                line([syzygyMatrix(ind,1), syzygyMatrix(ind,1)],[0 Planets+1],'Color',[0.5 0.5 0.5]);   
                 
+                if (isempty(setdiff(unique([1,4,8,9]),unique(syzygyMatrix(ind,2:5)))))
+                         %If it's the same set of planets as initial conditions
+                    line([syzygyMatrix(ind,1), syzygyMatrix(ind,1)],[0 Planets+1],'Color',[1 0 0]); 
+                end
             end
         end
         
